@@ -19,8 +19,8 @@ class LogStash::Outputs::CSV < LogStash::Outputs::File
   # Supports field reference syntax eg: `fields => ["field1", "[nested][field]"]`.
   config :fields, :validate => :array, :required => true
 
-  # Options for CSV output. This is passed directly to the Ruby stdlib to\_csv function.
-  # Full documentation is available here: [http://ruby-doc.org/stdlib-2.0.0/libdoc/csv/rdoc/index.html].
+  # Options for CSV output. This is passed directly to the Ruby stdlib to_csv function.
+  # Full documentation is available on the http://ruby-doc.org/stdlib-2.0.0/libdoc/csv/rdoc/index.html[Ruby CSV documentation page].
   # A typical use case would be to use alternative column or row seperators eg: `csv_options => {"col_sep" => "\t" "row_sep" => "\r\n"}` gives tab seperated data with windows line endings
   config :csv_options, :validate => :hash, :required => false, :default => Hash.new
 
