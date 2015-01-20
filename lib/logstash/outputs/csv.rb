@@ -11,7 +11,6 @@ require "logstash/json"
 class LogStash::Outputs::CSV < LogStash::Outputs::File
 
   config_name "csv"
-  milestone 1
 
   # The field names from the event that should be written to the CSV file.
   # Fields are written to the CSV in the same order as the array.
