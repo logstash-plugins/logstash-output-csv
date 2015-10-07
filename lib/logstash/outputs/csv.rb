@@ -31,7 +31,7 @@ class LogStash::Outputs::CSV < LogStash::Outputs::File
 
   public
   def receive(event)
-    return unless output?(event)
+    
     path = event.sprintf(@path)
     fd = open(path)
     csv_values = @fields.map {|name| get_value(name, event)}
