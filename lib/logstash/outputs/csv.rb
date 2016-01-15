@@ -22,6 +22,9 @@ class LogStash::Outputs::CSV < LogStash::Outputs::File
   # Full documentation is available on the http://ruby-doc.org/stdlib-2.0.0/libdoc/csv/rdoc/index.html[Ruby CSV documentation page].
   # A typical use case would be to use alternative column or row seperators eg: `csv_options => {"col_sep" => "\t" "row_sep" => "\r\n"}` gives tab seperated data with windows line endings
   config :csv_options, :validate => :hash, :required => false, :default => Hash.new
+  # Option to not escape/munge string values. Please note turning off this option
+  # may not be safe in your spreadsheet application
+  config :spreadsheet_safe, :validate => :boolean, :default => true
 
   public
   def register
@@ -49,6 +52,6 @@ class LogStash::Outputs::CSV < LogStash::Outputs::File
 
   private
   def escape_csv(val)
-    val.is_a?(String) && val.start_with?("=") ? "'#{val}" : val
+    spreadsheet_safe && val.is_a?(String) && val.start_with?("=") ? "'#{val}" : val
   end
 end # class LogStash::Outputs::CSV
