@@ -4,7 +4,7 @@ require "logstash/devutils/rspec/spec_helper"
 require "logstash/outputs/csv"
 
 describe LogStash::Outputs::CSV do
-  
+
 
   describe "Write a single field to a csv file" do
     tmpfile = Tempfile.new('logstash-spec-output-csv')
@@ -263,4 +263,30 @@ describe LogStash::Outputs::CSV do
       insist {lines[0]} == "one|two\tone|two\t"
     end
   end
+
+  describe "can escape rogue values" do
+    tmpfile = Tempfile.new('logstash-spec-output-csv')
+    config <<-CONFIG
+      input {
+        generator {
+          add_field => ["foo","1+1", "baz", "=1+1"]
+          count => 1
+        }
+      }
+      output {
+        csv {
+          path => "#{tmpfile.path}"
+          fields => ["foo", "baz"]
+        }
+      }
+    CONFIG
+
+    agent do
+      lines = CSV.read(tmpfile.path)
+      insist {lines.count} == 1
+      insist {lines[0][0]} == "1+1"
+      insist {lines[0][1]} == "'=1+1"
+    end
+  end
+  
 end

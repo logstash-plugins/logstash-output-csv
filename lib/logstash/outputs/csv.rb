@@ -31,7 +31,7 @@ class LogStash::Outputs::CSV < LogStash::Outputs::File
 
   public
   def receive(event)
-    
+
     path = event.sprintf(@path)
     fd = open(path)
     csv_values = @fields.map {|name| get_value(name, event)}
@@ -44,7 +44,11 @@ class LogStash::Outputs::CSV < LogStash::Outputs::File
   private
   def get_value(name, event)
     val = event[name]
-    val.is_a?(Hash) ? LogStash::Json.dump(val) : val
+    val.is_a?(Hash) ? LogStash::Json.dump(val) : escape_csv(val)
+  end
+
+  private
+  def escape_csv(val)
+    val.is_a?(String) && val.start_with?("=") ? "'#{val}" : val
   end
 end # class LogStash::Outputs::CSV
-
