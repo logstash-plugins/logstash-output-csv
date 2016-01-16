@@ -23,7 +23,7 @@ class LogStash::Outputs::CSV < LogStash::Outputs::File
   # A typical use case would be to use alternative column or row seperators eg: `csv_options => {"col_sep" => "\t" "row_sep" => "\r\n"}` gives tab seperated data with windows line endings
   config :csv_options, :validate => :hash, :required => false, :default => Hash.new
   # Option to not escape/munge string values. Please note turning off this option
-  # may not be safe in your spreadsheet application
+  # may not make the values safe in your spreadsheet application
   config :spreadsheet_safe, :validate => :boolean, :default => true
 
   public
