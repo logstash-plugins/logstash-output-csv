@@ -52,6 +52,6 @@ class LogStash::Outputs::CSV < LogStash::Outputs::File
 
   private
   def escape_csv(val)
-    spreadsheet_safe && val.is_a?(String) && val.start_with?("=") ? "'#{val}" : val
+    (spreadsheet_safe && val.is_a?(String) && val.start_with?("=")) ? "'#{val}" : val
   end
 end # class LogStash::Outputs::CSV
