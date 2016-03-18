@@ -1,3 +1,5 @@
+# 2.0.4
+  - New dependency requirements for logstash-core for the 5.0 release
 ## 2.0.3
  - Escape rogue values by default, which can be interpreted by spreadsheet apps. Add option to turn it off 
 
