@@ -46,7 +46,7 @@ class LogStash::Outputs::CSV < LogStash::Outputs::File
 
   private
   def get_value(name, event)
-    val = event[name]
+    val = event.get(name)
     val.is_a?(Hash) ? LogStash::Json.dump(val) : escape_csv(val)
   end
 
