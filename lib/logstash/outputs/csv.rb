@@ -26,17 +26,28 @@ class LogStash::Outputs::CSV < LogStash::Outputs::File
   # may not make the values safe in your spreadsheet application
   config :spreadsheet_safe, :validate => :boolean, :default => true
 
+  # Optional headers to add to the CSV file once it's generated.
+  config :headers, :validate => :string
+
   public
   def register
     super
-    @csv_options = Hash[@csv_options.map{|(k, v)|[k.to_sym, v]}]
+    @csv_options = Hash[@csv_options.map{|(k, v)|[k.to_sym, v]}]   
+
+    if headers 
+      @csv_options[:headers] = headers
+    end
   end
 
   public
   def receive(event)
 
     path = event.sprintf(@path)
+
+    @csv_options[:write_headers] = !File.exist?(path) || File.zero?(path)
+
     fd = open(path)
+
     csv_values = @fields.map {|name| get_value(name, event)}
     fd.write(csv_values.to_csv(@csv_options))
 
