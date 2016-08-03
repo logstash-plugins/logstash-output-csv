@@ -315,4 +315,34 @@ describe LogStash::Outputs::CSV do
     end
   end
 
+  describe "can turn on headers" do
+    tmpfile = Tempfile.new('logstash-spec-output-csv')
+    config <<-CONFIG
+      input {
+        generator {
+          add_field => ["foo","1+1", "baz", "=1+1"]
+          count => 2
+        }
+      }
+      output {
+        csv {
+          path => "#{tmpfile.path}"
+          spreadsheet_safe => false
+          fields => ["foo", "baz"]
+          headers => "header1,header2"
+        }
+      }
+    CONFIG
+
+    agent do
+      lines = CSV.read(tmpfile.path, :headers => true)
+      print lines
+      insist {lines.headers[0]} == "header1"
+      insist {lines.headers[1]} == "header2"
+      insist {lines.count} == 2
+      insist {lines[0][0]} == "1+1"
+      insist {lines[0][1]} == "=1+1"
+    end
+  end
+
 end
