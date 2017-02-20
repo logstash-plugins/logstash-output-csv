@@ -33,18 +33,32 @@ class LogStash::Outputs::CSV < LogStash::Outputs::File
   end
 
   public
-  def receive(event)
+  def multi_receive_encoded(events_and_encoded)
+    encoded_by_path = Hash.new {|h,k| h[k] = []}
 
-    path = event.sprintf(@path)
-    fd = open(path)
-    csv_values = @fields.map {|name| get_value(name, event)}
-    fd.write(csv_values.to_csv(@csv_options))
+    events_and_encoded.each do |event,encoded|
+      file_output_path = event_path(event)
+      encoded_by_path[file_output_path] << event_to_csv(event)
+    end
 
-    flush(fd)
-    close_stale_files
-  end #def receive
+    @io_mutex.synchronize do
+      encoded_by_path.each do |path,chunks|
+        fd = open(path)
+        chunks.each {|chunk| fd.write(chunk) }
+        fd.flush
+      end
+
+      close_stale_files
+    end
+  end
 
   private
+
+  def event_to_csv(event)
+    csv_values = @fields.map {|name| get_value(name, event)}
+    csv_values.to_csv(@csv_options)
+  end
+
   def get_value(name, event)
     val = event.get(name)
     val.is_a?(Hash) ? LogStash::Json.dump(val) : escape_csv(val)
