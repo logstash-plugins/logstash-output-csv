@@ -1,5 +1,6 @@
-## 4.0.0
+## 3.0.3
   - Use new Logsash 2.4/5.0 APIs for working batchwise and with shared concurrency (fix for https://github.com/logstash-plugins/logstash-output-csv/issues/10)
+  - this update aligns with its subclass logstash-output-file version 4.0.0, https://github.com/logstash-plugins/logstash-output-file
 
 ## 3.0.2
   - Relax constraint on logstash-core-plugin-api to >= 1.60 <= 2.99
