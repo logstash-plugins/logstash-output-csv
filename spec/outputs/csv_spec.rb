@@ -1,6 +1,7 @@
 require "csv"
 require "tempfile"
 require "logstash/devutils/rspec/spec_helper"
+require "insist"
 require "logstash/outputs/csv"
 
 describe LogStash::Outputs::CSV do

@@ -26,4 +26,5 @@ Gem::Specification.new do |s|
   s.add_runtime_dependency 'logstash-output-file'
   s.add_runtime_dependency 'logstash-filter-json'
   s.add_development_dependency 'logstash-devutils'
+  s.add_development_dependency 'insist'
 end
