@@ -26,6 +26,9 @@ class LogStash::Outputs::CSV < LogStash::Outputs::File
   # may not make the values safe in your spreadsheet application
   config :spreadsheet_safe, :validate => :boolean, :default => true
 
+  # Write headers automatically to the CSV file, using the event field names.
+  config :write_headers, :validate => :boolean, :default => false
+
   public
   def register
     super
@@ -34,11 +37,19 @@ class LogStash::Outputs::CSV < LogStash::Outputs::File
 
   public
   def multi_receive_encoded(events_and_encoded)
+    # track which files have emitted a CSV header
+    headers_emitted = Hash.new {|h,k| h[k] = false}
     encoded_by_path = Hash.new {|h,k| h[k] = []}
 
     events_and_encoded.each do |event,encoded|
-      file_output_path = event_path(event)
-      encoded_by_path[file_output_path] << event_to_csv(event)
+      path = event_path(event)
+
+      if write_headers && !headers_emitted[path] && (!File.exist?(path) || File.zero?(path))
+        encoded_by_path[path] << @fields.map{|n| escape_csv(n)}.to_csv(@csv_options)
+        headers_emitted[path] = true
+      end
+
+      encoded_by_path[path] << event_to_csv(event)
     end
 
     @io_mutex.synchronize do

@@ -316,4 +316,32 @@ describe LogStash::Outputs::CSV do
     end
   end
 
+  describe "can prepend field headers to output" do
+    tmpfile = Tempfile.new('logstash-spec-output-csv')
+    config <<-CONFIG
+      input {
+        generator {
+          add_field => ["foo", "bar", "baz", "quux"]
+          count => 3
+        }
+      }
+      output {
+        csv {
+          path => "#{tmpfile.path}"
+          write_headers => true
+          fields => ["foo", "not_there", "baz"]
+        }
+      }
+    CONFIG
+
+    agent do
+      lines = CSV.read(tmpfile.path)
+      insist {lines.count} == 4
+      insist {lines[0]} == ["foo","not_there","baz"]
+      insist {lines[1]} == ["bar", nil, "quux"]
+      insist {lines[2]} == ["bar", nil, "quux"]
+      insist {lines[3]} == ["bar", nil, "quux"]
+    end
+  end
+
 end
