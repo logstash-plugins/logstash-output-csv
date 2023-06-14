@@ -56,7 +56,7 @@ class LogStash::Outputs::CSV < LogStash::Outputs::File
 
   def event_to_csv(event)
     csv_values = @fields.map {|name| get_value(name, event)}
-    csv_values.to_csv(@csv_options)
+    csv_values.to_csv(**@csv_options)
   end
 
   def get_value(name, event)
