@@ -1,3 +1,6 @@
+## 3.0.10
+  - Extend prefix guard [#27](https://github.com/logstash-plugins/logstash-output-csv/pull/27)
+
 ## 3.0.9
  - Fix: updates syntax to JRuby 9.4 [#25](https://github.com/logstash-plugins/logstash-output-csv/pull/25)
 
