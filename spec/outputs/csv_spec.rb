@@ -6,314 +6,161 @@ require "logstash/outputs/csv"
 
 describe LogStash::Outputs::CSV do
 
+  subject { described_class.new(options) }
 
-  describe "Write a single field to a csv file" do
-    tmpfile = Tempfile.new('logstash-spec-output-csv')
-    config <<-CONFIG
-      input {
-        generator {
-          add_field => ["foo","bar"]
-          count => 1
-        }
-      }
-      output {
-        csv {
-          path => "#{tmpfile.path}"
-          fields => "foo"
-        }
-      }
-    CONFIG
+  let(:tmpfile) { Tempfile.new('logstash-spec-output-csv').path }
+  let(:output) { File.readlines(tmpfile) }
+  let(:csv_output) { CSV.read(tmpfile) }
 
-    agent do
-      lines = File.readlines(tmpfile.path)
-      insist {lines.count} == 1
-      insist {lines[0]} == "bar\n"
+  before(:each) do
+    subject.register
+    subject.multi_receive(events)
+  end
+
+  context "when configured with a single field" do
+    let(:events) { [ LogStash::Event.new("foo" => "bar") ] }
+    let(:options) { { "path" => tmpfile, "fields" => "foo" } }
+    it "writes a single field to a csv file" do
+      expect(output.count).to eq(1)
+      expect(output.first).to eq("bar\n")
     end
   end
 
-  describe "write multiple fields and lines to a csv file" do
-    tmpfile = Tempfile.new('logstash-spec-output-csv')
-    config <<-CONFIG
-      input {
-        generator {
-          add_field => ["foo", "bar", "baz", "quux"]
-          count => 2
-        }
-      }
-      output {
-        csv {
-          path => "#{tmpfile.path}"
-          fields => ["foo", "baz"]
-        }
-      }
-    CONFIG
-
-    agent do
-      lines = File.readlines(tmpfile.path)
-      insist {lines.count} == 2
-      insist {lines[0]} == "bar,quux\n"
-      insist {lines[1]} == "bar,quux\n"
+  context "when receiving multiple events with multiple fields" do
+    let(:events) do
+      [ LogStash::Event.new("foo" => "bar", "baz" => "quux"),
+        LogStash::Event.new("foo" => "bar", "baz" => "quux") ]
+    end
+    let(:options) { { "path" => tmpfile, "fields" => ["foo", "baz"] } }
+    it "writes a line per event " do
+      expect(output.count).to eq(2)
+    end
+    it "writes configured fields for each line" do
+      expect(output[0]).to eq("bar,quux\n")
+      expect(output[1]).to eq("bar,quux\n")
     end
   end
 
-  describe "missing event fields are empty in csv" do
-    tmpfile = Tempfile.new('logstash-spec-output-csv')
-    config <<-CONFIG
-      input {
-        generator {
-          add_field => ["foo","bar", "baz", "quux"]
-          count => 1
-        }
-      }
-      output {
-        csv {
-          path => "#{tmpfile.path}"
-          fields => ["foo", "not_there", "baz"]
-        }
-      }
-    CONFIG
+  context "with missing event fields" do
+    let(:events) do
+      [ LogStash::Event.new("foo" => "bar", "baz" => "quux") ]
+    end
+    let(:options) { { "path" => tmpfile, "fields" => ["foo", "not_there", "baz"] } }
 
-    agent do
-      lines = File.readlines(tmpfile.path)
-      insist {lines.count} == 1
-      insist {lines[0]} == "bar,,quux\n"
+    it "skips on the resulting line" do
+      expect(output.size).to eq(1)
+      expect(output[0]).to eq("bar,,quux\n")
     end
   end
 
-  describe "commas are quoted properly" do
-    tmpfile = Tempfile.new('logstash-spec-output-csv')
-    config <<-CONFIG
-      input {
-        generator {
-          add_field => ["foo","one,two", "baz", "quux"]
-          count => 1
-        }
-      }
-      output {
-        csv {
-          path => "#{tmpfile.path}"
-          fields => ["foo", "baz"]
-        }
-      }
-    CONFIG
-
-    agent do
-      lines = File.readlines(tmpfile.path)
-      insist {lines.count} == 1
-      insist {lines[0]} == "\"one,two\",quux\n"
+  context "when field values have commas" do
+    let(:events) do
+      [ LogStash::Event.new("foo" => "one,two", "baz" => "quux") ]
+    end
+    let(:options) { { "path" => tmpfile, "fields" => ["foo", "baz"] } }
+    it "correctly escapes them" do
+      expect(output.size).to eq(1)
+      expect(output[0]).to eq("\"one,two\",quux\n")
     end
   end
 
-  describe "new lines are quoted properly" do
-    tmpfile = Tempfile.new('logstash-spec-output-csv')
-    config <<-CONFIG
-      input {
-        generator {
-          add_field => ["foo","one\ntwo", "baz", "quux"]
-          count => 1
-        }
-      }
-      output {
-        csv {
-          path => "#{tmpfile.path}"
-          fields => ["foo", "baz"]
-        }
-      }
-    CONFIG
-
-    agent do
-      lines = CSV.read(tmpfile.path)
-      insist {lines.count} == 1
-      insist {lines[0][0]} == "one\ntwo"
+  context "when fields contain special characters" do
+    let(:events) do
+      [ LogStash::Event.new("foo" => 'one\ntwo', "baz" => "quux") ]
+    end
+    let(:options) { { "path" => tmpfile, "fields" => ["foo", "baz"] } }
+    it "correctly escapes them" do
+      expect(csv_output.size).to eq(1)
+      expect(csv_output[0]).to eq(['one\ntwo', 'quux'])
     end
   end
 
-  describe "fields that are are objects are written as JSON" do
-    tmpfile = Tempfile.new('logstash-spec-output-csv')
-    config <<-CONFIG
-      input {
-        generator {
-          message => '{"foo":{"one":"two"},"baz": "quux"}'
-          count => 1
-        }
-      }
-      filter {
-        json { source => "message"}
-      }
-      output {
-        csv {
-          path => "#{tmpfile.path}"
-          fields => ["foo", "baz"]
-        }
-      }
-    CONFIG
+  context "fields that contain objects" do
+    let(:events) do
+      [ LogStash::Event.new("foo" => {"one" => "two"}, "baz" => "quux") ]
+    end
+    let(:options) { { "path" => tmpfile, "fields" => ["foo", "baz"] } }
 
-    agent do
-      lines = CSV.read(tmpfile.path)
-      insist {lines.count} == 1
-      insist {lines[0][0]} == '{"one":"two"}'
+    it "are written as json" do
+      expect(csv_output.size).to eq(1)
+      expect(csv_output[0][0]).to eq('{"one":"two"}')
+    end
+  end
+  context "with address nested field" do
+    let(:events) do
+      [ LogStash::Event.new("foo" => {"one" => "two"}, "baz" => "quux") ]
+    end
+    let(:options) { { "path" => tmpfile, "fields" => ["[foo][one]", "baz"] } }
+
+    it "are referenced using field references" do
+      expect(csv_output.size).to eq(1)
+      expect(csv_output[0][0]).to eq('two')
+      expect(csv_output[0][1]).to eq('quux')
     end
   end
 
-  describe "can address nested field using field reference syntax" do
-    tmpfile = Tempfile.new('logstash-spec-output-csv')
-    config <<-CONFIG
-      input {
-        generator {
-          message => '{"foo":{"one":"two"},"baz": "quux"}'
-          count => 1
-        }
-      }
-      filter {
-        json { source => "message"}
-      }
-      output {
-        csv {
-          path => "#{tmpfile.path}"
-          fields => ["[foo][one]", "baz"]
-        }
-      }
-    CONFIG
+  context "missing nested field" do
+    let(:events) do
+      [ LogStash::Event.new("foo" => {"one" => "two"}, "baz" => "quux") ]
+    end
+    let(:options) { { "path" => tmpfile, "fields" => ["[foo][missing]", "baz"] } }
 
-    agent do
-      lines = CSV.read(tmpfile.path)
-      insist {lines.count} == 1
-      insist {lines[0][0]} == "two"
-      insist {lines[0][1]} == "quux"
+    it "are blank" do
+      expect(output.size).to eq(1)
+      expect(output[0]).to eq(",quux\n")
     end
   end
 
-  describe "missing nested field is blank" do
-    tmpfile = Tempfile.new('logstash-spec-output-csv')
-    config <<-CONFIG
-      input {
-        generator {
-          message => '{"foo":{"one":"two"},"baz": "quux"}'
-          count => 1
-        }
-      }
-      filter {
-        json { source => "message"}
-      }
-      output {
-        csv {
-          path => "#{tmpfile.path}"
-          fields => ["[foo][missing]", "baz"]
-        }
-      }
-    CONFIG
+  describe "field separator" do
+    let(:events) do
+      [ LogStash::Event.new("foo" => "one", "baz" => "two") ]
+    end
+    let(:options) { { "path" => tmpfile, "fields" => ["foo", "baz"], "csv_options" => {"col_sep" => "|" } } }
 
-    agent do
-      lines = File.readlines(tmpfile.path)
-      insist {lines.count} == 1
-      insist {lines[0]} == ",quux\n"
+    it "uses separator in output" do
+      expect(output.size).to eq(1)
+      expect(output[0]).to eq("one|two\n")
     end
   end
 
-  describe "can choose field seperator" do
-    tmpfile = Tempfile.new('logstash-spec-output-csv')
-    config <<-CONFIG
-      input {
-        generator {
-          message => '{"foo":"one","bar": "two"}'
-          count => 1
-        }
-      }
-      filter {
-        json { source => "message"}
-      }
-      output {
-        csv {
-          path => "#{tmpfile.path}"
-          fields => ["foo", "bar"]
-          csv_options => {"col_sep" => "|"}
-        }
-      }
-    CONFIG
-
-    agent do
-      lines = File.readlines(tmpfile.path)
-      insist {lines.count} == 1
-      insist {lines[0]} == "one|two\n"
+  describe "line seperator" do
+    let(:events) do
+      [ LogStash::Event.new("foo" => "one", "baz" => "two"),
+        LogStash::Event.new("foo" => "one", "baz" => "two") ]
     end
-  end
-  describe "can choose line seperator" do
-    tmpfile = Tempfile.new('logstash-spec-output-csv')
-    config <<-CONFIG
-      input {
-        generator {
-          message => '{"foo":"one","bar": "two"}'
-          count => 2
-        }
-      }
-      filter {
-        json { source => "message"}
-      }
-      output {
-        csv {
-          path => "#{tmpfile.path}"
-          fields => ["foo", "bar"]
-          csv_options => {"col_sep" => "|" "row_sep" => "\t"}
-        }
-      }
-    CONFIG
+    let(:options) { { "path" => tmpfile, "fields" => ["foo", "baz"], "csv_options" => {"col_sep" => "|", "row_sep" => "\t" } } }
 
-    agent do
-      lines = File.readlines(tmpfile.path)
-      insist {lines.count} == 1
-      insist {lines[0]} == "one|two\tone|two\t"
+    it "uses separator in output" do
+      expect(output.size).to eq(1)
+      expect(output[0]).to eq("one|two\tone|two\t")
     end
   end
 
-  describe "can escape rogue values" do
-    tmpfile = Tempfile.new('logstash-spec-output-csv')
-    config <<-CONFIG
-      input {
-        generator {
-          add_field => ["foo","1+1", "baz", "=1+1"]
-          count => 1
-        }
+  context "with rogue values" do
+    let(:event_data) do
+      {
+        "f1" => "1+1",
+        "f2" => "=1+1"
       }
-      output {
-        csv {
-          path => "#{tmpfile.path}"
-          fields => ["foo", "baz"]
-        }
-      }
-    CONFIG
+    end
+    let(:events) do
+      [ LogStash::Event.new(event_data) ]
+    end
 
-    agent do
-      lines = CSV.read(tmpfile.path)
-      insist {lines.count} == 1
-      insist {lines[0][0]} == "1+1"
-      insist {lines[0][1]} == "'=1+1"
+    let(:options) { { "path" => tmpfile, "fields" => ["f1", "f2"] } }
+    it "escapes them correctly" do
+      expect(csv_output.size).to eq(1)
+      expect(csv_output[0][0]).to eq("1+1")
+      expect(csv_output[0][1]).to eq("'=1+1")
+    end
+
+    context "when escaping is turned off" do
+      let(:options) { super().merge("spreadsheet_safe" => false) }
+      it "doesn't escapes values" do
+        expect(csv_output.size).to eq(1)
+        expect(csv_output[0][0]).to eq("1+1")
+        expect(csv_output[0][1]).to eq("=1+1")
+      end
     end
   end
-
-  describe "can turn off escaping rogue values" do
-    tmpfile = Tempfile.new('logstash-spec-output-csv')
-    config <<-CONFIG
-      input {
-        generator {
-          add_field => ["foo","1+1", "baz", "=1+1"]
-          count => 1
-        }
-      }
-      output {
-        csv {
-          path => "#{tmpfile.path}"
-          spreadsheet_safe => false
-          fields => ["foo", "baz"]
-        }
-      }
-    CONFIG
-
-    agent do
-      lines = CSV.read(tmpfile.path)
-      insist {lines.count} == 1
-      insist {lines[0][0]} == "1+1"
-      insist {lines[0][1]} == "=1+1"
-    end
-  end
-
 end
