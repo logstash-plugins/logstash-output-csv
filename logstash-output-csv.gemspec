@@ -22,9 +22,6 @@ Gem::Specification.new do |s|
   # Gem dependencies
   s.add_runtime_dependency "logstash-core-plugin-api", ">= 1.60", "<= 2.99"
 
-  s.add_runtime_dependency 'logstash-input-generator'
   s.add_runtime_dependency 'logstash-output-file'
-  s.add_runtime_dependency 'logstash-filter-json'
   s.add_development_dependency 'logstash-devutils'
-  s.add_development_dependency 'insist'
 end
