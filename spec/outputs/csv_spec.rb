@@ -139,18 +139,24 @@ describe LogStash::Outputs::CSV do
     let(:event_data) do
       {
         "f1" => "1+1",
-        "f2" => "=1+1"
+        "f2" => "=1+1",
+        "f3" => "+1+1",
+        "f4" => "-1+1",
+        "f5" => "@1+1"
       }
     end
     let(:events) do
       [ LogStash::Event.new(event_data) ]
     end
 
-    let(:options) { { "path" => tmpfile, "fields" => ["f1", "f2"] } }
+    let(:options) { { "path" => tmpfile, "fields" => ["f1", "f2", "f3", "f4", "f5"] } }
     it "escapes them correctly" do
       expect(csv_output.size).to eq(1)
       expect(csv_output[0][0]).to eq("1+1")
       expect(csv_output[0][1]).to eq("'=1+1")
+      expect(csv_output[0][2]).to eq("'+1+1")
+      expect(csv_output[0][3]).to eq("'-1+1")
+      expect(csv_output[0][4]).to eq("'@1+1")
     end
 
     context "when escaping is turned off" do
