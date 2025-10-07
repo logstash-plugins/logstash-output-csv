@@ -147,7 +147,7 @@ You can customise the line format using the `line` codec like:
 [source,ruby]
 -----
 output {
- file {
+ csv {
    path => ...
    codec => line { format => "custom format: %{message}"}
  }
