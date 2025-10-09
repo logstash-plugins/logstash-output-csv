@@ -1,3 +1,6 @@
+## 3.0.11
+  - Docs: Correct code snippet [#28](https://github.com/logstash-plugins/logstash-output-csv/pull/28)
+
 ## 3.0.10
   - Extend `spreadsheet_safe` prefix guard to '-', '+', and '@' [#27](https://github.com/logstash-plugins/logstash-output-csv/pull/27)
 
