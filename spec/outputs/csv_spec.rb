@@ -17,7 +17,7 @@ describe LogStash::Outputs::CSV do
     subject.multi_receive(events)
   end
 
-  # intentionally close and unlink to make sure the file will have always reference after tmpfile.path
+  # Explicitly close and unlink temp file to ensure immediate cleanup (Tempfile will cleanup eventually)
   after(:each) do
     tmpfile.close
     tmpfile.unlink
