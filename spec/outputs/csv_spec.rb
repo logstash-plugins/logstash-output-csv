@@ -7,18 +7,25 @@ describe LogStash::Outputs::CSV do
 
   subject { described_class.new(options) }
 
-  let(:tmpfile) { Tempfile.new('logstash-spec-output-csv').path }
-  let(:output) { File.readlines(tmpfile) }
-  let(:csv_output) { CSV.read(tmpfile) }
+  let(:tmpfile) { Tempfile.new('logstash-spec-output-csv') }
+  let(:tmpfile_path) { tmpfile.path }
+  let(:output) { File.readlines(tmpfile_path) }
+  let(:csv_output) { CSV.read(tmpfile_path) }
 
   before(:each) do
     subject.register
     subject.multi_receive(events)
   end
 
+  # intentionally close and unlink to make sure the file will have always reference after tmpfile.path
+  after(:each) do
+    tmpfile.close
+    tmpfile.unlink
+  end
+
   context "when configured with a single field" do
     let(:events) { [ LogStash::Event.new("foo" => "bar") ] }
-    let(:options) { { "path" => tmpfile, "fields" => "foo" } }
+    let(:options) { { "path" => tmpfile_path, "fields" => "foo" } }
     it "writes a single field to a csv file" do
       expect(output.count).to eq(1)
       expect(output.first).to eq("bar\n")
@@ -30,7 +37,7 @@ describe LogStash::Outputs::CSV do
       [ LogStash::Event.new("foo" => "bar", "baz" => "quux"),
         LogStash::Event.new("foo" => "bar", "baz" => "quux") ]
     end
-    let(:options) { { "path" => tmpfile, "fields" => ["foo", "baz"] } }
+    let(:options) { { "path" => tmpfile_path, "fields" => ["foo", "baz"] } }
     it "writes a line per event " do
       expect(output.count).to eq(2)
     end
@@ -44,7 +51,7 @@ describe LogStash::Outputs::CSV do
     let(:events) do
       [ LogStash::Event.new("foo" => "bar", "baz" => "quux") ]
     end
-    let(:options) { { "path" => tmpfile, "fields" => ["foo", "not_there", "baz"] } }
+    let(:options) { { "path" => tmpfile_path, "fields" => ["foo", "not_there", "baz"] } }
 
     it "skips on the resulting line" do
       expect(output.size).to eq(1)
@@ -56,7 +63,7 @@ describe LogStash::Outputs::CSV do
     let(:events) do
       [ LogStash::Event.new("foo" => "one,two", "baz" => "quux") ]
     end
-    let(:options) { { "path" => tmpfile, "fields" => ["foo", "baz"] } }
+    let(:options) { { "path" => tmpfile_path, "fields" => ["foo", "baz"] } }
     it "correctly escapes them" do
       expect(output.size).to eq(1)
       expect(output[0]).to eq("\"one,two\",quux\n")
@@ -67,7 +74,7 @@ describe LogStash::Outputs::CSV do
     let(:events) do
       [ LogStash::Event.new("foo" => 'one\ntwo', "baz" => "quux") ]
     end
-    let(:options) { { "path" => tmpfile, "fields" => ["foo", "baz"] } }
+    let(:options) { { "path" => tmpfile_path, "fields" => ["foo", "baz"] } }
     it "correctly escapes them" do
       expect(csv_output.size).to eq(1)
       expect(csv_output[0]).to eq(['one\ntwo', 'quux'])
@@ -78,7 +85,7 @@ describe LogStash::Outputs::CSV do
     let(:events) do
       [ LogStash::Event.new("foo" => {"one" => "two"}, "baz" => "quux") ]
     end
-    let(:options) { { "path" => tmpfile, "fields" => ["foo", "baz"] } }
+    let(:options) { { "path" => tmpfile_path, "fields" => ["foo", "baz"] } }
 
     it "are written as json" do
       expect(csv_output.size).to eq(1)
@@ -89,7 +96,7 @@ describe LogStash::Outputs::CSV do
     let(:events) do
       [ LogStash::Event.new("foo" => {"one" => "two"}, "baz" => "quux") ]
     end
-    let(:options) { { "path" => tmpfile, "fields" => ["[foo][one]", "baz"] } }
+    let(:options) { { "path" => tmpfile_path, "fields" => ["[foo][one]", "baz"] } }
 
     it "are referenced using field references" do
       expect(csv_output.size).to eq(1)
@@ -102,7 +109,7 @@ describe LogStash::Outputs::CSV do
     let(:events) do
       [ LogStash::Event.new("foo" => {"one" => "two"}, "baz" => "quux") ]
     end
-    let(:options) { { "path" => tmpfile, "fields" => ["[foo][missing]", "baz"] } }
+    let(:options) { { "path" => tmpfile_path, "fields" => ["[foo][missing]", "baz"] } }
 
     it "are blank" do
       expect(output.size).to eq(1)
@@ -114,7 +121,7 @@ describe LogStash::Outputs::CSV do
     let(:events) do
       [ LogStash::Event.new("foo" => "one", "baz" => "two") ]
     end
-    let(:options) { { "path" => tmpfile, "fields" => ["foo", "baz"], "csv_options" => {"col_sep" => "|" } } }
+    let(:options) { { "path" => tmpfile_path, "fields" => ["foo", "baz"], "csv_options" => {"col_sep" => "|" } } }
 
     it "uses separator in output" do
       expect(output.size).to eq(1)
@@ -127,7 +134,7 @@ describe LogStash::Outputs::CSV do
       [ LogStash::Event.new("foo" => "one", "baz" => "two"),
         LogStash::Event.new("foo" => "one", "baz" => "two") ]
     end
-    let(:options) { { "path" => tmpfile, "fields" => ["foo", "baz"], "csv_options" => {"col_sep" => "|", "row_sep" => "\t" } } }
+    let(:options) { { "path" => tmpfile_path, "fields" => ["foo", "baz"], "csv_options" => {"col_sep" => "|", "row_sep" => "\t" } } }
 
     it "uses separator in output" do
       expect(output.size).to eq(1)
@@ -149,7 +156,7 @@ describe LogStash::Outputs::CSV do
       [ LogStash::Event.new(event_data) ]
     end
 
-    let(:options) { { "path" => tmpfile, "fields" => ["f1", "f2", "f3", "f4", "f5"] } }
+    let(:options) { { "path" => tmpfile_path, "fields" => ["f1", "f2", "f3", "f4", "f5"] } }
     it "escapes them correctly" do
       expect(csv_output.size).to eq(1)
       expect(csv_output[0][0]).to eq("1+1")
